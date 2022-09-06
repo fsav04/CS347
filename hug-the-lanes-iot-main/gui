@@ -1,0 +1,591 @@
+import tkinter as tk
+from tkinter import ttk
+from tkinter import filedialog as fd
+import tkinter.messagebox
+import logging
+from read import *
+from input import *
+import json
+
+class tkinterApp(tk.Tk):
+
+	def __init__(self, *args, **kwargs):
+		
+		tk.Tk.__init__(self, *args, **kwargs)
+		
+		container = tk.Frame(self)
+		container.pack(side = "top", fill = "both", expand = True)
+
+		container.grid_rowconfigure(0, weight = 1)
+		container.grid_columnconfigure(0, weight = 1)
+		self.frames = {}
+		for F in (LandingPage, StartPage, VoiceID, TouchID, Pin, Alternative, Display, Tech):
+			frame = F(container, self)
+			self.frames[F] = frame
+			frame.grid(row = 0, column = 0, sticky ="nsew")
+		self.show_frame(LandingPage)#selects entry page
+  
+	def show_frame(self, cont):
+		frame = self.frames[cont]
+		frame.tkraise()
+
+#handles logging
+logging.basicConfig(filename="gui.txt", 
+		  format='%(asctime)s %(message)s', filemode='w') 
+logger=logging.getLogger() 
+logger.setLevel(logging.INFO)
+logger.info("Vehicle turned on")
+logger.info("-----------------------------------")
+
+profile = [["pro1","3333",True,True],["pro2","4444",False,True],["pro3","5555",True,False],["pro4","6666",False,False]]
+pcurrent = []
+OPTIONS = []
+#initialize global variables -----
+f = open('log.json')
+read = json.load(f)
+
+BACcheck = read['BACcheck']
+validTID = read['TouchID']
+validVID = read['VoiceID']
+VA = read['VA']
+SCS = read['SCS']
+AutoPark = read['AutoPark']
+Summoning = read['Summoning']
+Cameras = read['Cameras']
+Chairs = read['Chairs']
+ldSensor = read['LaneDetection'] 
+
+ldToggle = True
+cdsToggle = True
+nvcToggle = False
+
+class LandingPage(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+
+    for x in range(len(profile)):
+        OPTIONS.append(profile[x][0])
+
+    label = ttk.Label(self, text="Select a saved profile from the menu below")
+    label.grid(row=0,column=1,padx=10,pady=10)
+
+    #dropdown menu
+    userSelect = tk.StringVar(self)
+    userSelect.set(OPTIONS[0])
+
+    dropDown=ttk.OptionMenu(self, userSelect, "select",*OPTIONS)
+    dropDown.grid(row=1,column=1,padx=10,pady=10)
+    '''
+    update = tk.StringVar()
+    def dropUpdater():
+      dropDown["menu"].delete(0,"end")
+      for item in OPTIONS:
+        dropDown["menu"].add_command(label=item, command=lambda value=item: update.set(value))'''
+
+    confirmBTN = ttk.Button(self, text="Confirm Selection",command=lambda:[confirmOnClick()])
+    confirmBTN.grid(row=2,column=1,padx=10,pady=10)
+    
+    label2 = ttk.Label(self, text="Don't Have a profile? Press below to register.")
+    label2.grid(row=3,column=1,padx=10,pady=10)
+    #Register new profile button
+    SignUpBTN = ttk.Button(self, text="Register", 
+                command=lambda: [controller.show_frame(Alternative), logger.info("Registration Process Initiated")])
+    SignUpBTN.grid(row=4, column=1, padx=10, pady=10)
+
+    label2 = ttk.Label(self, text="Don't want to use a profile? Press below to use the deafault driver display.")
+    label2.grid(row=5,column=1,padx=10,pady=10)
+
+    skipBTN = ttk.Button(self, text="skip", command=lambda: [skipVerify()])
+    skipBTN.grid(row=6,column=1,padx=10,pady=10)
+
+    def skipVerify():
+      #test variable
+      keyValid = True
+      if keyValid == True:
+        logger.info("Landing Page: Valid Key provided. Profile selection bypassed.")
+        tkinter.messagebox.showinfo("Sucess!", "Press OK to continue to driver display")
+        app.title("Defualt Profile")
+        controller.show_frame(Display)
+      else:
+        logger.info("Landing Page Error: Invalid Key provided.")
+        tkinter.messagebox.showinfo("Error", "Invalid key provided. Contact technician for more information")
+    #related functions
+    def confirmOnClick():
+      if OPTIONS.__contains__(userSelect.get()) == True:
+        global pcurrent
+        pcurrent = profile[OPTIONS.index(userSelect.get())]
+        print(pcurrent)
+        app.title("%s's profile" %(userSelect.get()))
+        controller.show_frame(StartPage)
+      else:
+        tkinter.messagebox.showinfo("Error", "Please select a valid profile.")
+        logger.error("Invalid profile selected")
+
+class StartPage(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+
+    backBTN = ttk.Button(self, text="< Profile Selection", 
+                command=lambda: [controller.show_frame(LandingPage), logger.info("Returned to Profile Selection")])
+    backBTN.grid(row=0,column=0,padx=10,pady=10)
+
+    label = ttk.Label(self, text="Select Driver Profile Sign in Method")
+    label.grid(row=0, column=3, padx=10, pady=10)
+
+    VoiceBTN = ttk.Button(self, text="Voice ID", 
+                command=lambda: [VIDcheck(), logger.info("Voice ID Login Method Selected")])
+    VoiceBTN.grid(row=1, column=2, padx=10, pady=10)
+
+    def VIDcheck():
+      if pcurrent[2] == True:
+        controller.show_frame(VoiceID)
+        logger.info("Voice ID: valid profile. VID ready for user.")
+      else:
+        logger.info("Voice ID: Voice ID not set up for this profile")
+        tkinter.messagebox.showinfo("Sign In Error","Voice ID is not set up for this profile")
+
+
+    TouchBTN = ttk.Button(self, text="Touch ID", 
+                command=lambda: [TIDcheck(), logger.info("Touch ID Login Method Selected")])
+    TouchBTN.grid(row=1, column=3, padx=10, pady=10)
+
+    def TIDcheck():
+      if pcurrent[3] == True:
+        controller.show_frame(TouchID)
+        logger.info("Touch ID: valid profile. TID ready for user.")
+      else:
+        logger.info("Touch ID: Touch ID not set up for this profile")
+        tkinter.messagebox.showinfo("Sign In Error","Touch ID is not set up for this profile")
+
+    PinBTN = ttk.Button(self, text="Pin", 
+                command=lambda: [controller.show_frame(Pin), logger.info("Pin Login Method Selected")])
+    PinBTN.grid(row=1, column=4, padx=10, pady=10)
+
+    label2 = ttk.Label(self, text="Haven't set up a profile?")
+    label2.grid(row=2, column=3, padx=10, pady=10) 
+
+    SignUpBTN = ttk.Button(self, text="Register", 
+                command=lambda: [controller.show_frame(Alternative), logger.info("Registration Process Initiated")])
+    SignUpBTN.grid(row=3, column=3, padx=10, pady=10)
+ 
+    # to be removed. Just here for the time being to skip the verification stages
+    JumpBTN = ttk.Button(self, text="jump to driver display", 
+                command=lambda: controller.show_frame(Display))
+    JumpBTN.grid(row=5, column=5,padx=10, pady=10)   
+
+class VoiceID(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+
+    homeButton = ttk.Button(self, text="< Back", 
+                command=lambda: [controller.show_frame(StartPage), logger.info("Returned to Home Page")])
+    homeButton.grid(row=0,column=0,padx=10,pady=10)
+
+    label = ttk.Label(self, text="VoiceID")
+    label.grid(row=0, column=1, padx=10, pady=10)
+
+    def onClick():
+      logger.info("Voice ID recording initiated")
+      tkinter.messagebox.showinfo("Voice ID being recorded", "Press Ok when you've completed your entry phrase")
+      verifyBTN = ttk.Button(self, text="Press to verify VoiceID", command=lambda: validID())
+      verifyBTN.grid(row=1,column=2,padx=10,pady=10)
+      
+    def validID():#ehhhh
+      if validVID == 'True' and BACcheck == 'True':
+        logger.info("Voice ID Successful")
+        controller.show_frame(Display)
+      elif BACcheck == 'False':
+        logger.info("Voice ID Failed. ERROR: INVALID BAC")
+        tkinter.messagebox.showinfo("Invalid BAC", ("DO NOT DRIVE! BAC OVER LEGAL LIMIT!"))
+      else:
+        logger.info("Voice ID Failed. ERROR: Voice ID not saved")
+        tkinter.messagebox.showinfo("Voice ID","Voice ID invalid. Try again")
+      
+    startBTN = ttk.Button(self, text="Press and begin speaking", command=lambda: onClick())
+    startBTN.grid(row=1,column=1,padx=10,pady=10)
+    
+class TouchID(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+
+    homeButton = ttk.Button(self, text="< Back", 
+                command=lambda: [controller.show_frame(StartPage), logger.info("Returned to Home Page")])
+    homeButton.grid(row=0,column=0,padx=10,pady=10)
+
+    label = ttk.Label(self, text="TouchID")
+    label.grid(row=0, column=1, padx=10, pady=10)
+
+    label = ttk.Label(self, text="Press your finger below for Touch ID")
+    label.grid(row = 1, column = 1, padx=10, pady=10)
+
+    TouchBTN = ttk.Button(self, text="Press Here", command=lambda: verify())
+    TouchBTN.grid(row = 2,column = 1, padx=10, pady=10)
+
+    def verify():
+      if validTID == 'True':
+        logger.info("Touch ID: Touch ID entry suecessful. Displaying Driver Display")
+        tkinter.messagebox.showinfo("Touch ID", "Touch ID Successful! Press Ok to continue to Driver Display")
+        controller.show_frame(Display)
+      else:
+        logger.info("Touch ID: Touch ID entry failed. ID invalid.")
+        tkinter.messagebox.showinfo("Touch ID","Touch ID Invalid. Try again.")
+
+class Pin(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+
+    homeButton = ttk.Button(self, text="< Back", 
+                command=lambda: controller.show_frame(StartPage))
+    homeButton.grid(row=0,column=0,padx=10,pady=10)
+
+    label = ttk.Label(self, text="Pin")
+    label.grid(row=0, column=1, padx=10, pady=10)
+
+    label2 = ttk.Label(self,text="Enter PIN below")
+    label2.grid(row=1, column=1, padx=10,pady=10)
+
+    PinBTN = ttk.Button(self, text="Confirm", command=lambda: verify())
+    PinBTN.grid(row=3,column=1,padx=10,pady=10)
+
+    pinEntry = tk.StringVar()
+    inputPin = ttk.Entry(self, textvariable=pinEntry)
+    inputPin.grid(row = 2, column=1,padx=10,pady=10)
+
+    def verify():
+      if pinEntry.get() == "tech":
+        logger.info("Pin Entry: Technician Pin entered. Displaying Tech View")
+        tkinter.messagebox.showinfo("Technician Pin", "Press OK to continue to Technician Menu")
+        controller.show_frame(Tech)
+      elif pinEntry.get() == pcurrent[1]:
+        logger.info("Pin Entry: Driver Pin entered succesfully. Displaying Drive Display")
+        tkinter.messagebox.showinfo("Driver Pin", "Sucess! Press Ok to continue to Driver Display")
+        controller.show_frame(Display)
+      else:
+        logger.info("Pin Entry: Ivalid Pin entered")
+        tkinter.messagebox.showinfo("Pin Entry,","Pin is invalid. Try Again")
+
+class Tech(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+
+    homeButton = ttk.Button(self, text="< Back", command=lambda: controller.show_frame(StartPage))
+    homeButton.grid(row=0,column=0,padx=0,pady=0)
+
+    #button to open driver log file
+    txtBTN = ttk.Button(self,text="Open Driver log file", command=lambda: [openLog()])
+    txtBTN.grid(row=2,column=0)
+
+    jsonBTN = ttk.Button(self,text="View Vehicle Data", command=lambda: [openLog()])
+    jsonBTN.grid(row=3,column=0)
+
+    #button to view/manage profiles
+    '''profBTN = ttk.Button(self, text="Manage Profiles", command=lambda:[profEdit()])
+    profBTN.grid(row=4, column=0)'''
+
+    #open file code
+    text = tk.Text(self, height=12)
+    text.grid(row = 1, column = 1, stick='nsew', padx=10, pady=10)
+    filetypes = (
+        ('text files', '*.txt'),
+        ('log files', '*.log'),
+        ('json files', '*.json'),
+        ('All files', '*.')
+    )
+    def openLog():
+      f = fd.askopenfile(filetypes=filetypes)
+      text.insert('1.0', f.readlines())
+
+    '''def profEdit():
+      pass'''
+    
+class Alternative(tk.Frame):#profile creation
+  def __init__(self,parent,controller):
+    #LandingPage.__init__(self, parent, controller)
+    tk.Frame.__init__(self,parent)
+
+    #app.title("Registration Page")
+
+    homeButton = ttk.Button(self, text="< Back", 
+                command=lambda: controller.show_frame(StartPage))
+    homeButton.grid(row=0,column=0,padx=10,pady=10)
+      
+    label = ttk.Label(self, text="Register New Profile")
+    label.grid(row=0, column=1, padx=10, pady=10)
+
+    #username and related code
+    enterUser = ttk.Label(self, text="Create a username of only alphabet characters:")
+    enterUser.grid(row=1, column=1, padx=10, pady=10)
+    
+    username = tk.StringVar()
+    inputUser = ttk.Entry(self,textvariable=username)
+    inputUser.grid(row=1,column=2,padx=10,pady=10)
+    
+    #Touch ID and related code
+    enableTID = ttk.Label(self, text="Enable Touch ID?")
+    enableTID.grid(row=4, column=1, padx=10, pady=10)
+
+    TID=tk.BooleanVar()
+    TIDcheck = ttk.Checkbutton(self, text="Yes", variable=TID, onvalue=True, offvalue=False)
+    TIDcheck.grid(row=4,column=2,padx=10,pady=10)
+    
+    #Voice ID and related code
+    enableVID = ttk.Label(self, text="Enable Voice ID?")
+    enableVID.grid(row=3, column=1, padx=10, pady=10)
+
+    VID=tk.BooleanVar()
+    VIDcheck = ttk.Checkbutton(self, text="Yes", variable= VID, onvalue=True, offvalue=False)
+    VIDcheck.grid(row=3,column=2,padx=10,pady=10)
+
+    #Pin and related code
+    enterPin = ttk.Label(self, text="Create a 4 digit Pin:")
+    enterPin.grid(row=2, column=1, padx=10, pady=10)
+
+    Pin = tk.StringVar()
+    inputPin = ttk.Entry(self, textvariable=Pin)
+    inputPin.grid(row = 2, column=2,padx=10,pady=10)
+
+    validTIDscan = True
+    validVIDscan = True
+    def TIDscan():
+      tkinter.messagebox.showinfo("Touch ID Setup","Press and hold your finger to the TID sensor. Press OK when finished")
+      validTIDscan == True
+    def VIDscan():
+      tkinter.messagebox.showinfo("Voice ID Setup","Repeat the following phrase: 'The quick brown fox jumped over the lazy dog'. Press OK when finished.")
+      validVIDscan = True
+    #confirmation button and related code
+    confirm = ttk.Button(self, text="Confirm", command=lambda: storeProfile())
+    confirm.grid(row=5, column=2, padx=10, pady=10)
+    #stores in the following format:
+    # profiles = [[username, Pin, TID, VID],[...],...]
+    def storeProfile():
+      # is Pin 4 digits?, is Pin only integers?, is username a string of only alphabet chars?
+      if Pin.get().isdigit() != True and len(Pin.get()) != 4:
+        logger.error("Registration Error. Invalid Pin.")
+        tkinter.messagebox.showinfo("Registration Error", "Invalid Pin given. Please try again")
+      elif username.get().isalpha() != True:
+        logger.error("Registration Error. Invalid username.")
+        tkinter.messagebox.showinfo("Registration Error", "Invalid Username given. Please try again.")
+      else:
+        temp = []
+        temp.append(username.get())
+        temp.append(Pin.get())
+        temp.append(TID.get())
+        temp.append(VID.get())
+        global pcurrent
+        pcurrent = temp
+        profile.append(temp)
+        #pstore.info(temp)
+        OPTIONS.append(username.get())
+        #LandingPage.dropUpdater()
+        if TID.get() == True:
+          TIDscan()
+          if validTIDscan != True:
+            logger.info("Registration: Touch ID setup failed")
+            tkinter.messagebox.showinfo("Touch ID Setup", "Reading failed. Try again.")
+            TIDscan()
+        if VID.get() == True:
+          VIDscan()
+          if validVIDscan != True:
+            logger.info("Registration: Voice ID setup failed.")
+            tkinter.messagebox.showinfo("Voice ID Setup","VID setup failed. Try again")
+            VIDscan()
+        logger.info("Registration: registration complete, new profile set at pcurrent")
+        tkinter.messagebox.showinfo("Registration Complete", "Registration Sucessful! Press Ok to return to the landing page.")
+        app.title("%s's profile" %(pcurrent[0]))
+        controller.show_frame(StartPage)
+
+class Display(tk.Frame):
+  def __init__(self,parent,controller):
+    tk.Frame.__init__(self,parent)
+    
+    homeBTN = ttk.Button(self, text="< Back", 
+                command=lambda: controller.show_frame(StartPage))
+    homeBTN.grid(row=0,column=0,padx=10,pady=10)
+
+    #Tree to post relevent information about driver display actions
+    tree = ttk.Treeview(self)
+    tree.grid(row=1,column=2,padx=10,pady=10)
+    tree.insert('', 'end', 'widgets', text="Information Display")
+
+    #Virtual Assistant Button and related functions
+    vaBTN = ttk.Button(self, text="Virtual Assitant",                         
+                command=lambda: vaOnClick())
+    vaBTN.grid(row=0,column=1,padx=10,pady=10)
+
+    def vaOnClick():#CHECK--------
+      tkinter.messagebox.showinfo("Virtual Assistant Listening","Please begin giving your command. Press Ok when finished.")
+      if VA == 'True':
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="VA Command Processed!")
+        logger.info("Virtual Assistant: Command succesfully processed.")
+      else:
+        tkinter.messagebox.showinfo("Virtual Assistant","Command Invalid. Please try again or contact Technician.")
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="VA Command Invalid")
+        logger.info("Virtual Assistant: Invalid Command")
+
+    #Captain's Chairs Button and related functions
+    ccBTN = ttk.Button(self, text="Captain's Chairs",                         
+                command=lambda: ccOnClick())
+    ccBTN.grid(row=1,column=1,padx=10,pady=10)
+
+    def ccOnClick(): #CHECK[------------
+      chairState = "Drive"
+      if Chairs == 'False':
+        MsgBox = tkinter.messagebox.askquestion("Captain's Chair","Are you sure you want to turn your chair?. Select yes to begin.",icon='warning')
+        if MsgBox == 'yes':
+          chairState = "Entry"
+          tkinter.messagebox.showinfo("Captain's Chair","Chair sucessfully turned. Press OK to return chair to its original position")
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="Chair Returned!")
+          chairState = "Drive"
+          logger.info("Captain's Chair: Chair turn sucessful")
+      else:
+        chairState = "Drive"
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="Chair Turn Failed!")
+        logger.info("Captain's Chair: Chair Turn Failed. Object detected in path")
+    
+    #AutoPark Button and related functions
+    apBTN = ttk.Button(self, text="Auto Park",                         
+                command=lambda: apOnClick())
+    apBTN.grid(row=2,column=1,padx=10,pady=10)
+
+    def apOnClick():
+      validSpot = True
+      apSensor = True
+      if validSpot == True and apSensor == False:
+        MsgBox = tkinter.messagebox.askquestion("Auto Park","Are you sure you want to begin Auto Park?", icon='warning')
+        if MsgBox == 'yes':
+          tkinter.messagebox.showinfo("Auto Park","Auto Park Initiated. Please do not touch the steering wheel.")
+          logger.info("Auto Park sequence completed")
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="Vehicle Parked!")
+      elif apSensor == True:
+        tkinter.messagebox.showinfo("Auto Park","Auto Park detected an object")
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="Object Detected! Auto Park Failed")
+        logger.info("Auto Park sequence failed. Object Detected in path.")
+      elif validSpot == False:
+        tkinter.messagebox.showinfo("Auto Park","Auto Park detected an invalid parking space.")
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="Object Detected! AP Failed")
+        logger.info("Auto Park sequence failed. Invalid parking space")
+      else:
+        tkinter.messagebox.showinfo("Auto Park","Auto Park Error. Please contact a Technician")
+        logger.info("Auto Park Error Unknown")
+    
+    #Lane Detection Toggle and related functions
+    ldBTN = ttk.Button(self, text="Lane Detection",                         
+                command=lambda: ldOnClick())
+    ldBTN.grid(row=0,column=3,padx=10,pady=10)
+
+    def ldOnClick():#CHECK------------------------------
+      global ldToggle
+      if ldToggle == True and ldSensor == True:#toggled on, sensor detected object
+        tree.insert('', 'end', 'widgets', text="Object Detected!")
+        logger.info("Object detected by Lane Detection")
+      elif ldToggle == False:#turn on LD
+        MsgBox = tkinter.messagebox.askquestion("Lane Detection System","Select Yes to enable Lane Detection System",icon='warning')
+        if MsgBox == 'yes':
+          ldToggle == True
+          logger.info("Lane Detection Enabled")
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="LDS enabled")
+      elif ldToggle == True:#turn off LD
+        MsgBox = tkinter.messagebox.askquestion("Lane Detection System","Select Yes to disable Lane Detection System",icon='warning')
+        if MsgBox == 'yes':
+          ldToggle = False
+          logger.info("Lane Detection Disabled")
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="LDS disabled")
+      else:
+        tkinter.messagebox.showinfo("Lane Detection System","Error in Lane Detection System. Please contact technician.")
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="LDS error")
+        logger.info("Lane Detection: Error in detection system")
+        
+    #Vehicle Summon and related functions
+    sumBTN = ttk.Button(self, text="Vehicle Summon",                         
+                command=lambda: sumOnClick())
+    sumBTN.grid(row=1,column=3,padx=10,pady=10)
+    
+    def sumOnClick():#CHECk--------------------------
+      Summoning = True
+      if Summoning == True:
+        MsgBox = tkinter.messagebox.askquestion("Vehicle Summon","Select yes to confirm vehicle summon",icon='warning')
+        if MsgBox == 'yes':
+          tkinter.messagebox.showinfo("Vehicle Summon","Summoning in progress...")
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="Vehicle Summoned!")
+          logger.info("Summon: Sucesfully Summoned")
+          Summoning = False
+      else:
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="Already Summoned!")
+        logger.info("Summon: Summon Failed.")
+        Summoning = False
+    
+    #Collision Detection System and related funcitons
+    cdsBTN = ttk.Button(self, text="Collision Detection System",                         
+                command=lambda: cdsOnClick())
+    cdsBTN.grid(row=2,column=3,padx=10,pady=10)
+
+    #if collision is detected alert driver
+    if SCS == 'True':
+      tkinter.messagebox.showinfo("Collision Detection System","Collision Detected!")
+      logger.info("Collision Detection System: Collision Detected. 911 being alerted.")
+      tree.delete('widgets')
+      tree.insert('', 'end', 'widgets', text="VA Alerting 911!")
+
+    def cdsOnClick():#CHECK--------------------------------------
+      global cdsToggle
+      if cdsToggle == True and SCS == True:
+        tkinter.messagebox.showinfo("Collision Detection System","Collision Detected!")
+        logger.info("Collision Detection System: Collision Detected. 911 being alerted.")
+        tree.delete('widgets')
+        tree.insert('', 'end', 'widgets', text="VA Alerting 911!")
+      elif cdsToggle == True:
+        MsgBox = tkinter.messagebox.askquestion("Collision Detection System","Are you sure you want to disable the Collision Detection System's ability to automatically contact authorities in the event of a collision? Select Yes to consent",icon = 'warning')
+        if MsgBox == 'yes':
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="CDS Disabled")
+          logger.info("Collision Detection System: System Disabled by user.")
+          #tree.insert('', 'end', 'widgets', text="CDS auto alert disabled")
+          cdsToggle = False
+      elif cdsToggle == False:
+        MsgBox = tkinter.messagebox.askquestion("Collision Detection System","Press Ok to enable CDS 911 auto alert",icon = 'warning')
+        if MsgBox == 'yes':
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="CDS Enabled")
+          logger.info("Collision Detection System: System Enabled by User.")
+          #tree.insert('', 'end', 'widgets', text="CDS auto alert enabled")
+          cdsToggle = True
+      else:
+        tkinter.messagebox.showinfo("Collision Detection System","CDS error. Please contact technician")
+
+      #NightView 360 camera
+    nvcBTN = ttk.Button(self, text="Night View 360 Camera",command=lambda: nvcOnClick())
+    nvcBTN.grid(row=3,column=2,padx=10,pady=10)
+      
+    def nvcOnClick():#check-------------
+      global nvcToggle
+      if nvcToggle == True:
+        MsgBox = tkinter.messagebox.askquestion("Night Vision Camera", "Select yes to turn off Night Vision 360 camera.",icon='warning')
+        if MsgBox == 'yes':
+          logger.info("Night Vision 360 camera turned off")
+          nvcToggle = False
+          tree.delete('widgets')
+          tree.insert('', 'end', 'widgets', text="NVC turned off")
+      elif nvcToggle == False:
+        MsgBox = tkinter.messagebox.askquestion("Night Vision Camera","Select Yes to turn on Night Vision 360 camera.",icon='warning')
+        if MsgBox == 'yes':
+          logger.info("Night Vision 360 camera turned on")
+          nvcToggle = True
+          tree.delete('widgets')
+          tree.insert('','end','widgets',text="Displaying NVC")  
+
+app = tkinterApp()
+app.geometry("800x600")
+app.title("CS347")
+app.mainloop()

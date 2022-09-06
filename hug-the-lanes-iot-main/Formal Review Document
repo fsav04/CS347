@@ -1,0 +1,19 @@
+https://docs.google.com/document/d/1r-CkEL5-jHPZB6ZMpoB04ElPsd_CU9CITN-GOL6vqrc/edit?usp=sharing
+Formal Technical Review
+
+Time: May 9, 2022 from 12:02 PM to 1:45  PM
+Participants: Trevor Mckay, Rosa Taveras, and Frank Savattere
+Roles: Producer: Trevor Mckay, Review Leader: Rosa Taveras, Recorder: Frank Savattere
+Votes: Trevor Mckay: Conditional Approval, Rosa Taveras: Conditional Approval, Frank Savattere: Conditional Approval. Conditions are explained at the end of the document. 
+
+The meeting took place on zoom and reviewed our final version of the IoT Hug the Lanes project and all code written for the aforementioned project. Trevor, Rosa, and Frank met in preparation of the final presentation for the project. Communications leading up to this meeting took place in a group chat and the meeting time was decided upon 24 hours in advance. Rayyan who did not attend, did not respond to any message or voice any concern of having a possible time conflict.	
+
+	We began by reviewing the GUI. It was agreed upon that the ten features: Touch ID, Voice ID, Breathalyzer, Virtual Assistant, Severe Collision System, Captain’s Chairs, Lane Detection, Auto Park, Summon, and Night View 360 Cameras had been successfully implemented and no further review of these is needed.
+
+	We then reviewed a certain button contained within the GUI. This “jump to driver display” button would allow us to bypass certain pages and authorizations in testing. The group conditionally accepted the final release of our project given that this buttona is removed before the final release to customers. For now it remains in the project so the TA who will be testing our product may utilize it.
+	
+	The next portion of the project up for review was the input and read files. These files contained and processed the sensor data for our features. The read file would process the input file’s sensor values and store them into a separate .json file for the GUI to read from. No issues were detected within this system, it had been properly implemented and no further review is needed. 
+
+	The final part that was reviewed was the profile creation and managment system. It was determined that the registration page was fully functional however the profile storage system was not deemed to be functional. The drop down menu on the Landing Page would not update when a new profile was created and no profiles would be stored after the program was exited. The accepted solution to this problem would be to use a .json file to store and read profiles. Finally, there was no ability for the technician to manage or edit the stored profiles. Given the fact that this was not a mission critical feature, and the time constraint the team was under, we decided to not move forward with the implementation. If we were to add it into our project in the future, we would simply store the registration page values into a .json file and read the profile data from that same file in the log in process. 
+
+In conclusion, our IoT Hug the Lanes project met all functional requirements set fourth by us and the project guidelines given that we remove the “jump to driver display” button before official release and finish implementing profile management so that a technician is no longer required in the event that a new profile is to be permanently added.
